@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"slices"
 	"strings"
+
+	"github.com/cedar-policy/cedar-go/internal/strictjson"
 )
 
 // An Entity defines the parents and attributes for an EntityUID.
@@ -41,6 +43,12 @@ func (e Entity) MarshalJSON() ([]byte, error) {
 		e.Tags,
 	}
 	return json.Marshal(m)
+}
+
+// UnmarshalJSON deserializes an Entity from JSON. Keys are case-sensitive, as in the Rust SDK.
+func (e *Entity) UnmarshalJSON(b []byte) error {
+	type entityAlias Entity
+	return strictjson.Unmarshal(b, (*entityAlias)(e))
 }
 
 func (e Entity) Equal(other Entity) bool {

@@ -1,13 +1,12 @@
 package json
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/cedar-policy/cedar-go/internal/consts"
 	"github.com/cedar-policy/cedar-go/internal/extensions"
+	"github.com/cedar-policy/cedar-go/internal/strictjson"
 	"github.com/cedar-policy/cedar-go/types"
 	"github.com/cedar-policy/cedar-go/x/exp/ast"
 )
@@ -272,22 +271,76 @@ func (n nodeJSON) ToNode() (ast.Node, error) {
 }
 
 func (n *nodeJSON) UnmarshalJSON(b []byte) error {
-	decoder := json.NewDecoder(bytes.NewReader(b))
-	decoder.DisallowUnknownFields()
-
+	// Keys are case-sensitive: the spec uses the capitalized "Value", "Var", "Set", and "Record" to
+	// tell them apart from operators, so e.g. "value" is not "Value".
 	type nodeJSONAlias nodeJSON
-	if err := decoder.Decode((*nodeJSONAlias)(n)); err == nil {
-		return nil
-	} else if !strings.HasPrefix(err.Error(), "json: unknown field") {
-		return err
+	if !strictjson.HasUnknownKeys(b, (*nodeJSONAlias)(n)) {
+		return json.Unmarshal(b, (*nodeJSONAlias)(n))
 	}
 
-	// If an unknown field was parsed, the spec tells us to treat it as an extension method:
+	// If there is any other key, the spec tells us to treat it as an extension method:
 	// > Any other key
 	// > This key is treated as the name of an extension function or method. The value must
 	// > be a JSON array of values, each of which is itself an JsonExpr object. Note that for
 	// > method calls, the method receiver is the first argument.
 	return json.Unmarshal(b, &n.ExtensionCall)
+}
+
+// The policy structure is matched case-sensitively, as in the Rust implementation.
+
+func (j *policyJSON) UnmarshalJSON(b []byte) error {
+	type policyJSONAlias policyJSON
+	return strictjson.Unmarshal(b, (*policyJSONAlias)(j))
+}
+
+func (j *scopeJSON) UnmarshalJSON(b []byte) error {
+	type scopeJSONAlias scopeJSON
+	return strictjson.Unmarshal(b, (*scopeJSONAlias)(j))
+}
+
+func (j *scopeInJSON) UnmarshalJSON(b []byte) error {
+	type scopeInJSONAlias scopeInJSON
+	return strictjson.Unmarshal(b, (*scopeInJSONAlias)(j))
+}
+
+func (j *conditionJSON) UnmarshalJSON(b []byte) error {
+	type conditionJSONAlias conditionJSON
+	return strictjson.Unmarshal(b, (*conditionJSONAlias)(j))
+}
+
+func (j *binaryJSON) UnmarshalJSON(b []byte) error {
+	type binaryJSONAlias binaryJSON
+	return strictjson.Unmarshal(b, (*binaryJSONAlias)(j))
+}
+
+func (j *unaryJSON) UnmarshalJSON(b []byte) error {
+	type unaryJSONAlias unaryJSON
+	return strictjson.Unmarshal(b, (*unaryJSONAlias)(j))
+}
+
+func (j *strJSON) UnmarshalJSON(b []byte) error {
+	type strJSONAlias strJSON
+	return strictjson.Unmarshal(b, (*strJSONAlias)(j))
+}
+
+func (j *likeJSON) UnmarshalJSON(b []byte) error {
+	type likeJSONAlias likeJSON
+	return strictjson.Unmarshal(b, (*likeJSONAlias)(j))
+}
+
+func (j *isJSON) UnmarshalJSON(b []byte) error {
+	type isJSONAlias isJSON
+	return strictjson.Unmarshal(b, (*isJSONAlias)(j))
+}
+
+func (j *ifThenElseJSON) UnmarshalJSON(b []byte) error {
+	type ifThenElseJSONAlias ifThenElseJSON
+	return strictjson.Unmarshal(b, (*ifThenElseJSONAlias)(j))
+}
+
+func (j *PolicySetJSON) UnmarshalJSON(b []byte) error {
+	type PolicySetJSONAlias PolicySetJSON
+	return strictjson.Unmarshal(b, (*PolicySetJSONAlias)(j))
 }
 
 func (p *Policy) UnmarshalJSON(b []byte) error {

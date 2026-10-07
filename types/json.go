@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.com/cedar-policy/cedar-go/internal/strictjson"
 )
 
 var (
@@ -37,13 +39,38 @@ type entityValueJSON struct {
 	Entity *extEntity `json:"__entity,omitempty"`
 }
 
+// The escape objects above are matched case-sensitively, as in the Rust implementation. A miscased
+// key makes decoding fail, so UnmarshalJSON falls back to treating the object as a Record, like Rust.
+
+func (e *extn) UnmarshalJSON(b []byte) error {
+	type extnAlias extn
+	return strictjson.Unmarshal(b, (*extnAlias)(e))
+}
+
+func (e *extValueJSON) UnmarshalJSON(b []byte) error {
+	type extValueJSONAlias extValueJSON
+	return strictjson.Unmarshal(b, (*extValueJSONAlias)(e))
+}
+
+func (e *extEntity) UnmarshalJSON(b []byte) error {
+	type extEntityAlias extEntity
+	return strictjson.Unmarshal(b, (*extEntityAlias)(e))
+}
+
+func (e *entityValueJSON) UnmarshalJSON(b []byte) error {
+	type entityValueJSONAlias entityValueJSON
+	return strictjson.Unmarshal(b, (*entityValueJSONAlias)(e))
+}
+
 type explicitValue struct {
 	Value Value
 }
 
 func UnmarshalJSON(b []byte, v *Value) error {
 	// TODO: make this faster if it matters
-	{
+	// Only an object can be an extension escape; skipping the attempt for other values keeps the
+	// escape's case-sensitive key check off the path for strings, numbers, booleans, and sets.
+	if trimmed := bytes.TrimLeft(b, " \t\r\n"); len(trimmed) > 0 && trimmed[0] == '{' {
 		var res extValueJSON
 		if err := json.Unmarshal(b, &res); err == nil && res.Extn != nil {
 			switch res.Extn.Fn {

@@ -1,6 +1,7 @@
 package types_test
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -57,6 +58,54 @@ func TestEntityMarshalJSON(t *testing.T) {
 			"attrs":{},
 			"tags":{}
 		}`)
+}
+
+func TestEntityUnmarshalJSON(t *testing.T) {
+	t.Parallel()
+
+	t.Run("exact keys", func(t *testing.T) {
+		t.Parallel()
+		var got types.Entity
+		err := json.Unmarshal([]byte(`{
+			"uid": {"type": "FooType", "id": "1"},
+			"parents": [{"type": "BarType", "id": "2"}],
+			"attrs": {"a": 1},
+			"tags": {"t": 2}
+		}`), &got)
+		testutil.OK(t, err)
+		testutil.Equals(t, got, types.Entity{
+			UID:        types.NewEntityUID("FooType", "1"),
+			Parents:    types.NewEntityUIDSet(types.NewEntityUID("BarType", "2")),
+			Attributes: types.NewRecord(types.RecordMap{"a": types.Long(1)}),
+			Tags:       types.NewRecord(types.RecordMap{"t": types.Long(2)}),
+		})
+	})
+
+	t.Run("unknown keys ignored", func(t *testing.T) {
+		t.Parallel()
+		var got types.Entity
+		err := json.Unmarshal([]byte(`{"uid": {"type": "FooType", "id": "1"}, "parents": [], "attrs": {}, "other": 1}`), &got)
+		testutil.OK(t, err)
+		testutil.Equals(t, got.UID, types.NewEntityUID("FooType", "1"))
+	})
+
+	miscased := []struct {
+		name  string
+		input string
+	}{
+		{"uid", `{"UID": {"type": "FooType", "id": "1"}, "parents": [], "attrs": {}}`},
+		{"parents", `{"uid": {"type": "FooType", "id": "1"}, "Parents": [], "attrs": {}}`},
+		{"attrs", `{"uid": {"type": "FooType", "id": "1"}, "parents": [], "ATTRS": {"a": 1}}`},
+		{"tags", `{"uid": {"type": "FooType", "id": "1"}, "parents": [], "attrs": {}, "Tags": {"t": 2}}`},
+	}
+	for _, tt := range miscased {
+		t.Run("miscased "+tt.name, func(t *testing.T) {
+			t.Parallel()
+			var got types.Entity
+			err := json.Unmarshal([]byte(tt.input), &got)
+			testutil.Error(t, err)
+		})
+	}
 }
 
 func TestEntityTagMarshalJSON(t *testing.T) {

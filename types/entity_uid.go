@@ -136,6 +136,12 @@ func (i ImplicitlyMarshaledEntityUID) MarshalJSON() ([]byte, error) {
 	return json.Marshal(s)
 }
 
+// UnmarshalJSON accepts the same implicit and explicit JSON forms of an EntityUID as EntityUID.UnmarshalJSON, with
+// case-sensitive keys.
+func (i *ImplicitlyMarshaledEntityUID) UnmarshalJSON(b []byte) error {
+	return (*EntityUID)(i).UnmarshalJSON(b)
+}
+
 type EntityUIDSet = mapset.ImmutableMapSet[EntityUID]
 
 // NewEntityUIDSet returns an immutable EntityUIDSet ready for use.
