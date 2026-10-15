@@ -93,7 +93,7 @@ type jsonEntityType struct {
 	Annotations   map[string]string `json:"annotations,omitempty"`
 
 	// Enum entity field (mutually exclusive with standard fields)
-	Enum []string `json:"enum,omitempty"`
+	Enum *[]string `json:"enum,omitempty"`
 }
 
 type jsonAction struct {
@@ -189,9 +189,11 @@ func marshalNamespace(name types.Path, ns ast.Namespace) (jsonNamespace, error) 
 		if len(enum.Annotations) > 0 {
 			jet.Annotations = marshalAnnotations(enum.Annotations)
 		}
+		values := make([]string, 0, len(enum.Values))
 		for _, v := range enum.Values {
-			jet.Enum = append(jet.Enum, string(v))
+			values = append(values, string(v))
 		}
+		jet.Enum = &values
 		jns.EntityTypes[string(etName)] = jet
 	}
 
@@ -313,12 +315,15 @@ func unmarshalNamespace(jns jsonNamespace) (ast.Namespace, error) {
 	}
 
 	for etName, jet := range jns.EntityTypes {
-		if len(jet.Enum) > 0 {
+		if jet.Enum != nil {
+			if len(*jet.Enum) == 0 {
+				return ast.Namespace{}, fmt.Errorf("entity type %q: enum must have at least one value", etName)
+			}
 			enum := ast.Enum{}
 			if len(jet.Annotations) > 0 {
 				enum.Annotations = unmarshalAnnotations(jet.Annotations)
 			}
-			for _, v := range jet.Enum {
+			for _, v := range *jet.Enum {
 				enum.Values = append(enum.Values, types.String(v))
 			}
 			if ns.Enums == nil {

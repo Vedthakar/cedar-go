@@ -247,6 +247,11 @@ func TestUnmarshalSetMissingElement(t *testing.T) {
 	testutil.Error(t, s.UnmarshalJSON([]byte(`{"": {"entityTypes": {"Foo": {"tags": {"type": "Set"}}}, "actions": {}}}`)))
 }
 
+func TestUnmarshalEmptyEnum(t *testing.T) {
+	var s schemajson.Schema
+	testutil.Error(t, s.UnmarshalJSON([]byte(`{"": {"entityTypes": {"Status": {"enum": []}}, "actions": {}}}`)))
+}
+
 func TestMarshalUnmarshalJSON(t *testing.T) {
 	input := `{
 		"NS": {
